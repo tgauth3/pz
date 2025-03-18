@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f7fa;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .box {
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            padding: 5px;
+            text-align: center;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            width: 70px; /* 固定宽度 */
+            height: 36px; /* 固定高度 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .box-number {
+            font-size: 14px; /* 自适应字体大小 */
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 2px;
+            white-space: nowrap; /* 防止换行 */
+            overflow: hidden;
+            text-overflow: ellipsis; /* 超出部分显示省略号 */
+        }
+        .amount {
+            color: #e74c3c;
+            font-size: 12px; /* 自适应字体大小 */
+            font-weight: bold;
+            background-color: #f9f9f9;
+            padding: 2px 5px;
+            border-radius: 6px;
+            display: inline-block;
+            min-width: 20px;
+            white-space: nowrap; /* 防止换行 */
+            overflow: hidden;
+            text-overflow: ellipsis; /* 超出部分显示省略号 */
+        }
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+            width: 100%;
+            max-width: 100%;
+        }
+        input {
+            width: 82%;
+            padding: 10px;
+            border: 2px solid #3498db;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .button-container {
+            display: flex;
+            gap: 10px;
+            width: 90%;
+        }
+        button {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #addBtn {
+            flex: 3;
+            background: linear-gradient(to right, #2ecc71, #27ae60);
+            color: white;
+        }
+        #resetBtn {
+            flex: 1;
+            background: linear-gradient(to right, #e74c3c, #c0392b);
+            color: white;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .highlight {
+            border-color: #e74c3c;
+            background-color: #ffe6e6;
+        }
+        .timer {
+            margin-top: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .timer.red {
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <!-- 第一行：数字框 -->
+    <div class="row">
+        <div class="box">
+            <div class="box-number">1</div>
+            <div class="amount" id="amount1">0</div>
+        </div>
+        <div class="box">
+            <div class="box-number">2</div>
+            <div class="amount" id="amount2">0</div>
+        </div>
+        <div class="box">
+            <div class="box-number">3</div>
+            <div class="amount" id="amount3">0</div>
+        </div>
+        <div class="box">
+            <div class="box-number">4</div>
+            <div class="amount" id="amount4">0</div>
+        </div>
+    </div>
+
+    <!-- 第二行：单双框 -->
+    <div class="row">
+        <div class="box">
+            <div class="box-number">单</div>
+            <div class="amount" id="amount单">0</div>
+        </div>
+        <div class="box">
+            <div class="box-number">双</div>
+            <div class="amount" id="amount双">0</div>
+        </div>
+    </div>
+
+    <!-- 输入框和按钮 -->
+    <div class="controls">
+        <input type="text" id="input" placeholder="请输入或粘贴">
+        <div class="button-container">
+            <button id="addBtn" onclick="processInput()">统计/计时</button>
+            <button id="resetBtn" onclick="resetAll()">重置</button>
+        </div>
+    </div>
+
+    <!-- 计时器显示区域 -->
+    <div class="timer" id="timer">00:00</div>
+
+    <script>
+        let startTime = null;
+        let timerInterval = null;
+
+        function processInput() {
+            const input = document.getElementById('input').value.trim();
+            
+            // 单双匹配模式
+            const danShuangMatch = input.match(/^(单|双)[^\d]*?(\d+)/);
+            // 多编号匹配模式（强化版）
+            const multiNumMatch = input.match(/^[^\d]*?(\d+)(\D.*?)(\d+)$/);
+
+            if (danShuangMatch) {
+                // 处理单双类型
+                const type = danShuangMatch[1];
+                const amount = parseInt(danShuangMatch[2]);
+                if (!isNaN(amount)) {
+                    updateAmount(type, amount);
+                } else {
+                    alert("金额必须为数字");
+                }
+            } else if (multiNumMatch) {
+                // 处理多编号类型
+                const numbers = multiNumMatch[1].split('').map(Number);
+                const amount = parseInt(multiNumMatch[3]);
+                
+                if (isNaN(amount)) {
+                    alert("金额格式错误");
+                    return;
+                }
+
+                const validNumbers = numbers.filter(n => n >= 1 && n <= 4);
+                
+                if (validNumbers.length === 0) {
+                    alert("第一位数必须1-4");
+                    return;
+                }
+
+                validNumbers.forEach(n => {
+                    updateAmount(n.toString(), amount);
+                });
+            }
+            
+            // 清空输入框
+            document.getElementById('input').value = '';
+            highlightMaxAmount();
+
+            // 启动计时器
+            startTimer();
+        }
+
+        function updateAmount(target, amount) {
+            const element = document.getElementById(`amount${target}`);
+            if (element) {
+                element.textContent = parseInt(element.textContent) + amount;
+            }
+        }
+
+        function resetAll() {
+            // 重置所有计数器
+            document.querySelectorAll('.amount').forEach(el => {
+                el.textContent = '0';
+            });
+            highlightMaxAmount();
+
+            // 停止并清除计时器
+            stopTimer();
+        }
+
+        function highlightMaxAmount() {
+            // 移除所有高亮样式
+            document.querySelectorAll('.box').forEach(box => {
+                box.classList.remove('highlight');
+            });
+
+            // 找到金额最高的框
+            const amounts = Array.from(document.querySelectorAll('.amount')).map(el => parseInt(el.textContent));
+            const maxAmount = Math.max(...amounts);
+            const maxIndex = amounts.indexOf(maxAmount);
+
+            if (maxAmount > 0) {
+                const maxBox = document.querySelectorAll('.box')[maxIndex];
+                maxBox.classList.add('highlight');
+            }
+        }
+
+        function startTimer() {
+            if (!startTime) {
+                startTime = Date.now();
+                timerInterval = setInterval(updateTimer, 1000);
+            }
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                startTime = null;
+                document.getElementById('timer').textContent = '00:00';
+                document.getElementById('timer').classList.remove('red');
+            }
+        }
+
+        function updateTimer() {
+            const currentTime = Date.now();
+            const elapsedTime = currentTime - startTime;
+            const minutes = Math.floor(elapsedTime / 60000);
+            const seconds = Math.floor((elapsedTime % 60000) / 1000);
+            const timerElement = document.getElementById('timer');
+            timerElement.textContent = 
+                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            // 如果计时超过 3 分钟，字体变为红色
+            if (elapsedTime > 180000) {
+                timerElement.classList.add('red');
+            } else {
+                timerElement.classList.remove('red');
+            }
+        }
+
+        // 输入框回车支持
+        document.getElementById('input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') processInput();
+        });
+
+        // 禁止输入框聚焦时页面滚动
+        document.getElementById('input').addEventListener('focus', (e) => {
+            e.preventDefault();
+            document.getElementById('input').scrollIntoView({ behavior: 'auto', block: 'nearest' });
+        });
+setButtonImage("https://gitee.com/tianji2/images/raw/main/js/1186333C-A8F0-4F7F-A07D-F372E91207E7.png");
+
+    </script>
+</body>
+</html>
